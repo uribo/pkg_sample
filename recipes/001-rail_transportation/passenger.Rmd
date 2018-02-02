@@ -1,0 +1,91 @@
+---
+title: "鉄道輸送統計調査: 旅客営業キロ及び旅客数量"
+date:  "`r paste0('Original: 2017-02-02, ', 'Last Build: ', format(Sys.time(), '%Y-%m-%d'))`"
+author: "Shinya Uryu"
+output:
+  html_notebook:
+    df_print: paged
+    highlight: tango
+    mathjax: null
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+liftr:
+  maintainer: "Shinya Uryu"
+  email: "r.sh1nya.uryu@gmail.com"
+  from: "rocker/binder:latest" # (3.2.4)
+  pandoc: false
+  texlive: false
+  sysdeps:
+    - fonts-ipafont-gothic
+  cran:
+    - here/0.1
+    - hrbrthemes/0.1.0
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r, include = TRUE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r, message = FALSE, warning = FALSE}
+library(magrittr)
+library(dplyr)
+```
+
+
+## データの取得
+
+```{r}
+# library(RSelenium)
+# rD <- remoteDriver(remoteServerAddr = "192.168.99.100", port = 4445L)
+# # remDr
+# rD$open()
+# rD$navigate("http://www.google.com/ncr")
+```
+
+## 可視化
+
+```{r}
+# https://www.e-stat.go.jp/stat-search/files?page=1&layout=datalist&toukei=00600350&tstat=000001011026&cycle=1&year=20170&month=24101210&stat_infid=000031666092&result_back=1
+library(hrbrthemes)
+```
+
+```{r}
+d <- readxl::read_excel(here::here("data-raw/g2-2es.xls"),
+                        range = "A6:I21", col_names = c("type", "name", "duration_km",
+                                                                              # yoy... year over year
+                                                                         "commuter_pass", NA, "commuter_pass_yoy",
+                                                                         "ticket", NA, "ticket_compare_yoy")) %>% 
+  select(-starts_with("X__")) %>% 
+  tidyr::fill(type) %>% 
+  mutate_if(is.character, stringi::stri_trans_general, id = "nfkc") %>% 
+  mutate_if(is.character, stringr::str_replace_all, pattern = "[:space:]", replace = "")
+
+d2 <- d %>% 
+  filter(type == "運輸局別")
+
+library(ggplot2)
+# quartzFonts(ipa = quartzFont(rep("IPAPGothic", 4)))
+theme_set(theme_classic(base_size = 12, base_family = "IPAPGothic"))
+d2 %>% 
+  ggplot(aes(forcats::fct_reorder(name, duration_km), duration_km)) + geom_bar(stat = "identity") +
+  geom_text(aes(label = scales::comma(duration_km)), hjust = 0, nudge_y = 100) +
+  coord_flip() +
+  # scale_y_comma(limits = c(0, 7000)) + 
+  labs(x = "運輸局", 
+       y = "営業距離 (km)",
+       title = "平成29年10月分 旅客営業キロ",
+       subtitle = "国土交通省 鉄道輸送統計調査",
+       caption = "Data Source: http://www.mlit.go.jp/k-toukei/tetsuyu/tetsuyu.html"
+       ) + 
+  theme_ipsum(grid = "X")
+```
+
+## Session Information
+
+```{r}
+sessionInfo()
+```
